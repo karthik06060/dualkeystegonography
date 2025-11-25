@@ -92,10 +92,8 @@ export const decodeMessageFromImage = (
   
   // Extract the encrypted message
   const totalBits = colonIndex + (length * 8);
-  for (let i = colonIndex / 8; i < Math.ceil(totalBits / 8) * 8 && i < imageData.data.length; i++) {
-    if (bits.length < totalBits) {
-      bits.push(imageData.data[i] & 1);
-    }
+  for (let i = colonIndex; i < totalBits && i < imageData.data.length; i++) {
+    bits.push(imageData.data[i] & 1);
   }
   
   const encrypted = bitsToString(bits.slice(colonIndex));
