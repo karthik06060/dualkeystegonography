@@ -92,27 +92,33 @@ export const StegoDecoder = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="decode-key1" className="text-foreground mb-2 block">
-                Decryption Key 1
+                Latent Position Key (Key 1)
               </Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Controls PRNG-based deterministic embedding positions
+              </p>
               <Input
                 id="decode-key1"
                 type="password"
                 value={key1}
                 onChange={(e) => setKey1(e.target.value)}
-                placeholder="Enter first key..."
+                placeholder="Enter position key..."
                 className="bg-input border-border text-foreground"
               />
             </div>
             <div>
               <Label htmlFor="decode-key2" className="text-foreground mb-2 block">
-                Decryption Key 2
+                Encryption Key (Key 2)
               </Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Used for message decryption
+              </p>
               <Input
                 id="decode-key2"
                 type="password"
                 value={key2}
                 onChange={(e) => setKey2(e.target.value)}
-                placeholder="Enter second key..."
+                placeholder="Enter encryption key..."
                 className="bg-input border-border text-foreground"
               />
             </div>
