@@ -1,38 +1,59 @@
 import { useState, useRef } from 'react';
-import { Lock, Download, AlertCircle } from 'lucide-react';
+import { Lock, Download, AlertCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ImageUpload } from '@/components/ImageUpload';
 import { encodeMessageInImage } from '@/lib/steganography';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/integrations/supabase/client';
 
 export const StegoEncoder = () => {
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
+  const [imagePrompt, setImagePrompt] = useState('');
+  const [generatedImage, setGeneratedImage] = useState<string>('');
   const [message, setMessage] = useState('');
   const [key1, setKey1] = useState('');
   const [key2, setKey2] = useState('');
+  const [generating, setGenerating] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [encodedImageUrl, setEncodedImageUrl] = useState<string>('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const handleImageSelect = (file: File) => {
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setImagePreview(e.target?.result as string);
-      setEncodedImageUrl('');
-    };
-    reader.readAsDataURL(file);
+  const handleGenerateImage = async () => {
+    if (!imagePrompt) {
+      toast.error('Please enter an image prompt');
+      return;
+    }
+
+    setGenerating(true);
+    setEncodedImageUrl('');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-image', {
+        body: { prompt: imagePrompt }
+      });
+
+      if (error) throw error;
+
+      if (data?.imageUrl) {
+        setGeneratedImage(data.imageUrl);
+        toast.success('Image generated successfully!');
+      } else {
+        throw new Error('No image URL returned');
+      }
+    } catch (error) {
+      console.error('Image generation error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to generate image');
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleEncode = async () => {
-    if (!imageFile || !message || !key1 || !key2) {
-      toast.error('Please fill in all fields');
+    if (!generatedImage || !message || !key1 || !key2) {
+      toast.error('Please generate an image and fill in all fields');
       return;
     }
 
@@ -65,7 +86,7 @@ export const StegoEncoder = () => {
         }, 'image/png');
       };
 
-      img.src = imagePreview;
+      img.src = generatedImage;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Encoding failed');
       setProcessing(false);
@@ -94,14 +115,37 @@ export const StegoEncoder = () => {
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <Label htmlFor="image-upload" className="text-foreground mb-2 block">
-              Upload Image
+            <Label htmlFor="image-prompt" className="text-foreground mb-2 block">
+              Image Prompt
             </Label>
-            <ImageUpload
-              onImageSelect={handleImageSelect}
-              preview={encodedImageUrl || imagePreview}
-            />
+            <div className="flex gap-2">
+              <Textarea
+                id="image-prompt"
+                value={imagePrompt}
+                onChange={(e) => setImagePrompt(e.target.value)}
+                placeholder="Describe the image you want to generate..."
+                className="min-h-20 bg-input border-border text-foreground"
+              />
+              <Button
+                onClick={handleGenerateImage}
+                disabled={generating || !imagePrompt}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 self-end"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                {generating ? 'Generating...' : 'Generate'}
+              </Button>
+            </div>
           </div>
+
+          {generatedImage && (
+            <div className="relative rounded-lg overflow-hidden border-2 border-border">
+              <img
+                src={encodedImageUrl || generatedImage}
+                alt="Generated"
+                className="w-full h-auto max-h-96 object-contain bg-muted"
+              />
+            </div>
+          )}
 
           <div>
             <Label htmlFor="message" className="text-foreground mb-2 block">
@@ -157,7 +201,7 @@ export const StegoEncoder = () => {
           <div className="flex gap-3">
             <Button
               onClick={handleEncode}
-              disabled={processing || !imageFile || !message || !key1 || !key2}
+              disabled={processing || !generatedImage || !message || !key1 || !key2}
               className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {processing ? 'Encoding...' : 'Encode Message'}
