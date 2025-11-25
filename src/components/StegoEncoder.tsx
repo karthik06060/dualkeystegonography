@@ -138,12 +138,24 @@ export const StegoEncoder = () => {
           </div>
 
           {generatedImage && (
-            <div className="relative rounded-lg overflow-hidden border-2 border-border">
-              <img
-                src={encodedImageUrl || generatedImage}
-                alt="Generated"
-                className="w-full h-auto max-h-96 object-contain bg-muted"
-              />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-medium ${encodedImageUrl ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {encodedImageUrl ? '✓ Encoded Image (with hidden message)' : 'Generated Image'}
+                </span>
+              </div>
+              <div className={`relative rounded-lg overflow-hidden border-2 ${encodedImageUrl ? 'border-primary' : 'border-border'}`}>
+                <img
+                  src={encodedImageUrl || generatedImage}
+                  alt={encodedImageUrl ? 'Encoded' : 'Generated'}
+                  className="w-full h-auto max-h-96 object-contain bg-muted"
+                />
+                {encodedImageUrl && (
+                  <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
+                    Encoded
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
