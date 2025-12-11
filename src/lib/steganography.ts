@@ -1,103 +1,132 @@
-// Steganography utilities using LSB (Least Significant Bit) technique with dual-key encryption
+// Steganography utilities using LSB (Least Significant Bit) technique with AES-256-GCM encryption
+import { encryptAES, decryptAES } from './crypto';
 
-export const encryptWithDualKey = (message: string, key1: string, key2: string): string => {
-  // Simple dual-key XOR encryption
-  const combinedKey = key1 + key2;
-  let encrypted = '';
-  
-  for (let i = 0; i < message.length; i++) {
-    const charCode = message.charCodeAt(i);
-    const keyChar = combinedKey.charCodeAt(i % combinedKey.length);
-    encrypted += String.fromCharCode(charCode ^ keyChar);
+// Seeded PRNG for deterministic position generation
+class SeededPRNG {
+  private seed: number;
+
+  constructor(seedString: string) {
+    // Convert seed string to number using hash
+    this.seed = this.hashString(seedString);
   }
-  
-  return btoa(encrypted); // Base64 encode
-};
 
-export const decryptWithDualKey = (encryptedMessage: string, key1: string, key2: string): string => {
-  try {
-    const decoded = atob(encryptedMessage); // Base64 decode
-    const combinedKey = key1 + key2;
-    let decrypted = '';
-    
-    for (let i = 0; i < decoded.length; i++) {
-      const charCode = decoded.charCodeAt(i);
-      const keyChar = combinedKey.charCodeAt(i % combinedKey.length);
-      decrypted += String.fromCharCode(charCode ^ keyChar);
+  private hashString(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
     }
-    
-    return decrypted;
-  } catch {
-    throw new Error('Decryption failed. Check your keys.');
+    return Math.abs(hash) || 1;
   }
-};
 
-export const encodeMessageInImage = (
+  // LCG (Linear Congruential Generator)
+  next(): number {
+    this.seed = (this.seed * 1103515245 + 12345) & 0x7fffffff;
+    return this.seed / 0x7fffffff;
+  }
+
+  // Generate array of unique positions
+  generatePositions(count: number, maxPosition: number): number[] {
+    const positions = new Set<number>();
+    while (positions.size < count && positions.size < maxPosition) {
+      const pos = Math.floor(this.next() * maxPosition);
+      positions.add(pos);
+    }
+    return Array.from(positions).sort((a, b) => a - b);
+  }
+}
+
+export const encodeMessageInImage = async (
   imageData: ImageData,
   message: string,
-  key1: string,
-  key2: string
-): ImageData => {
-  const encrypted = encryptWithDualKey(message, key1, key2);
+  key1: string, // Encryption key (AES-256-GCM)
+  key2: string  // Latent position key (PRNG seed)
+): Promise<ImageData> => {
+  // Encrypt message with AES-256-GCM
+  const encrypted = await encryptAES(message, key1);
   const messageWithLength = `${encrypted.length}:${encrypted}`;
   const messageBits = stringToBits(messageWithLength);
+
+  // Generate deterministic positions using key2 as PRNG seed
+  const prng = new SeededPRNG(key2);
+  const maxPositions = imageData.data.length;
   
-  if (messageBits.length > imageData.data.length) {
+  if (messageBits.length > maxPositions) {
     throw new Error('Message too large for this image');
   }
-  
+
+  const positions = prng.generatePositions(messageBits.length, maxPositions);
+
   const newImageData = new ImageData(
     new Uint8ClampedArray(imageData.data),
     imageData.width,
     imageData.height
   );
-  
-  // Embed message bits into LSB of image pixels
+
+  // Embed message bits into LSB at deterministic positions
   for (let i = 0; i < messageBits.length; i++) {
-    newImageData.data[i] = (newImageData.data[i] & 0xFE) | messageBits[i];
+    const pos = positions[i];
+    newImageData.data[pos] = (newImageData.data[pos] & 0xFE) | messageBits[i];
   }
-  
+
   return newImageData;
 };
 
-export const decodeMessageFromImage = (
+export const decodeMessageFromImage = async (
   imageData: ImageData,
-  key1: string,
-  key2: string
-): string => {
-  // Extract bits from LSB
-  const bits: number[] = [];
+  key1: string, // Encryption key (AES-256-GCM)
+  key2: string  // Latent position key (PRNG seed)
+): Promise<string> => {
+  const prng = new SeededPRNG(key2);
+  const maxPositions = imageData.data.length;
+
+  // First, extract enough bits to find the length prefix
+  // We need to read bits until we find the colon separator
+  let lengthBits: number[] = [];
   let length = 0;
   let lengthFound = false;
-  let colonIndex = 0;
+  let bitsRead = 0;
   
-  // First, extract length
-  for (let i = 0; i < imageData.data.length && !lengthFound; i++) {
-    bits.push(imageData.data[i] & 1);
+  // Generate positions progressively
+  const tempPositions = prng.generatePositions(10000, maxPositions); // Start with enough for length
+  
+  for (let i = 0; i < tempPositions.length && !lengthFound; i++) {
+    const pos = tempPositions[i];
+    lengthBits.push(imageData.data[pos] & 1);
+    bitsRead++;
     
-    if (bits.length % 8 === 0) {
-      const char = String.fromCharCode(bitsToNumber(bits.slice(-8)));
+    if (lengthBits.length % 8 === 0) {
+      const char = String.fromCharCode(bitsToNumber(lengthBits.slice(-8)));
       if (char === ':') {
         lengthFound = true;
-        colonIndex = bits.length;
-        const lengthStr = bitsToString(bits.slice(0, -8));
+        const lengthStr = bitsToString(lengthBits.slice(0, -8));
         length = parseInt(lengthStr, 10);
       }
     }
   }
-  
-  if (!lengthFound) {
+
+  if (!lengthFound || isNaN(length)) {
     throw new Error('No hidden message found');
   }
-  
-  // Extract the encrypted message
-  const totalBits = colonIndex + (length * 8);
-  for (let i = colonIndex; i < totalBits && i < imageData.data.length; i++) {
-    bits.push(imageData.data[i] & 1);
+
+  // Now generate all positions needed for the full message
+  const prng2 = new SeededPRNG(key2);
+  const totalBitsNeeded = bitsRead + (length * 8);
+  const allPositions = prng2.generatePositions(totalBitsNeeded, maxPositions);
+
+  // Extract all bits at the deterministic positions
+  const allBits: number[] = [];
+  for (let i = 0; i < allPositions.length; i++) {
+    const pos = allPositions[i];
+    allBits.push(imageData.data[pos] & 1);
   }
+
+  // Extract the encrypted message (after the length prefix and colon)
+  const encrypted = bitsToString(allBits.slice(bitsRead));
   
-  const encrypted = bitsToString(bits.slice(colonIndex));
-  return decryptWithDualKey(encrypted, key1, key2);
+  // Decrypt with AES-256-GCM
+  return await decryptAES(encrypted, key1);
 };
 
 const stringToBits = (str: string): number[] => {
@@ -115,7 +144,9 @@ const bitsToString = (bits: number[]): string => {
   let str = '';
   for (let i = 0; i < bits.length; i += 8) {
     const byte = bitsToNumber(bits.slice(i, i + 8));
-    str += String.fromCharCode(byte);
+    if (byte > 0) {
+      str += String.fromCharCode(byte);
+    }
   }
   return str;
 };
