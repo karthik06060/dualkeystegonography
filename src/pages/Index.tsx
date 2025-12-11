@@ -18,8 +18,8 @@ const Index = () => {
               <Lock className="w-4 h-4 text-primary absolute -bottom-1 -right-1" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">DualKey Stego</h1>
-              <p className="text-xs text-muted-foreground">Dual-Key Image Steganography</p>
+              <h1 className="text-2xl font-bold text-foreground">Dual-Key Latent Diffusion Steganography</h1>
+              <p className="text-xs text-muted-foreground">AES-256-GCM Encrypted Image Steganography</p>
             </div>
           </div>
         </div>
@@ -30,24 +30,24 @@ const Index = () => {
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-3xl mx-auto text-center space-y-4">
             <h2 className="text-4xl md:text-5xl font-bold text-foreground">
-              Hide Messages in Plain Sight
+              Secure Message Hiding
             </h2>
             <p className="text-lg text-muted-foreground">
-              Advanced dual-key steganography tool that securely hides your messages inside images
-              using LSB technique and dual-key encryption.
+              Advanced steganography tool using AES-256-GCM encryption and PIN-protected QR codes.
+              Keys are generated automatically and never shown.
             </p>
             <div className="flex flex-wrap gap-4 justify-center pt-4">
               <div className="flex items-center gap-2 text-sm text-foreground">
                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                Dual-Key Encryption
+                AES-256-GCM Encryption
               </div>
               <div className="flex items-center gap-2 text-sm text-foreground">
                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                LSB Steganography
+                12-Character PIN Protection
               </div>
               <div className="flex items-center gap-2 text-sm text-foreground">
                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                Secure & Private
+                QR-Based Key Exchange
               </div>
             </div>
           </div>
@@ -61,17 +61,17 @@ const Index = () => {
             <TabsList className="grid w-full grid-cols-2 bg-card border border-border">
               <TabsTrigger
                 value="encode"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-lg py-3"
               >
-                <Lock className="w-4 h-4 mr-2" />
-                Encode
+                <Lock className="w-5 h-5 mr-2" />
+                Encode Message
               </TabsTrigger>
               <TabsTrigger
                 value="decode"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-lg py-3"
               >
-                <Unlock className="w-4 h-4 mr-2" />
-                Decode
+                <Unlock className="w-5 h-5 mr-2" />
+                Decode Message
               </TabsTrigger>
             </TabsList>
 
@@ -91,7 +91,7 @@ const Index = () => {
         <div className="container mx-auto px-4 py-8">
           <div className="text-center space-y-2">
             <p className="text-sm text-muted-foreground">
-              Secure steganography with dual-key encryption
+              Secure steganography with AES-256-GCM encryption
             </p>
             <p className="text-xs text-muted-foreground">
               All processing happens locally in your browser. Your data never leaves your device.
