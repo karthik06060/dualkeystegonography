@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react';
-import { Lock, Download, AlertCircle, Sparkles, QrCode, AlertTriangle } from 'lucide-react';
+import { Lock, Download, Sparkles, QrCode, AlertTriangle, Upload, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { encodeMessageInImage } from '@/lib/steganography';
 import { generateRandomKey, generatePRNGSeed, encryptKeyBundleWithPin, validatePin } from '@/lib/crypto';
 import { toast } from 'sonner';
@@ -12,8 +13,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import QRCode from 'qrcode';
 
+type ImageSource = 'upload' | 'generate';
+
 export const StegoEncoder = () => {
+  const [imageSource, setImageSource] = useState<ImageSource>('upload');
   const [imagePrompt, setImagePrompt] = useState('');
+  const [uploadedImage, setUploadedImage] = useState<string>('');
   const [generatedImage, setGeneratedImage] = useState<string>('');
   const [message, setMessage] = useState('');
   const [pin, setPin] = useState('');
@@ -22,6 +27,28 @@ export const StegoEncoder = () => {
   const [encodedImageUrl, setEncodedImageUrl] = useState<string>('');
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const sourceImage = imageSource === 'upload' ? uploadedImage : generatedImage;
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.match(/^image\/(png|jpeg|jpg)$/)) {
+      toast.error('Please upload a PNG or JPG image');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setUploadedImage(event.target?.result as string);
+      setEncodedImageUrl('');
+      setQrCodeUrl('');
+      toast.success('Image uploaded successfully!');
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleGenerateImage = async () => {
     if (!imagePrompt) {
@@ -55,8 +82,8 @@ export const StegoEncoder = () => {
   };
 
   const handleEncode = async () => {
-    if (!generatedImage || !message || !pin) {
-      toast.error('Please generate an image, enter a message, and provide a 12-character PIN');
+    if (!sourceImage || !message || !pin) {
+      toast.error('Please provide an image, enter a message, and provide a 12-character PIN');
       return;
     }
 
@@ -123,7 +150,7 @@ export const StegoEncoder = () => {
         setProcessing(false);
       };
 
-      img.src = generatedImage;
+      img.src = sourceImage;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Encoding failed');
       setProcessing(false);
@@ -157,7 +184,7 @@ export const StegoEncoder = () => {
             Encode Message
           </CardTitle>
           <CardDescription>
-            Hide your secret message inside an AI-generated image with AES-256-GCM encryption
+            Hide your secret message inside an image with AES-256-GCM encryption
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -175,17 +202,73 @@ export const StegoEncoder = () => {
           </div>
 
           <div>
-            <Label htmlFor="image-prompt" className="text-foreground mb-2 block">
-              Enter Image Prompt
+            <Label className="text-foreground mb-2 block">
+              Choose Image Source
             </Label>
-            <Textarea
-              id="image-prompt"
-              value={imagePrompt}
-              onChange={(e) => setImagePrompt(e.target.value)}
-              placeholder="Describe the image you want to generate..."
-              className="min-h-20 bg-input border-border text-foreground"
-            />
+            <RadioGroup
+              value={imageSource}
+              onValueChange={(value) => {
+                setImageSource(value as ImageSource);
+                setEncodedImageUrl('');
+                setQrCodeUrl('');
+              }}
+              className="flex gap-4"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="upload" id="upload" />
+                <Label htmlFor="upload" className="flex items-center gap-2 cursor-pointer">
+                  <Upload className="w-4 h-4" />
+                  Upload Image
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="generate" id="generate" />
+                <Label htmlFor="generate" className="flex items-center gap-2 cursor-pointer">
+                  <Sparkles className="w-4 h-4" />
+                  Generate Image From Prompt
+                </Label>
+              </div>
+            </RadioGroup>
           </div>
+
+          {imageSource === 'upload' && (
+            <div>
+              <Label className="text-foreground mb-2 block">
+                Upload Image (.png or .jpg)
+              </Label>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <ImageIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">
+                  Click to upload PNG or JPG image
+                </p>
+              </div>
+            </div>
+          )}
+
+          {imageSource === 'generate' && (
+            <div>
+              <Label htmlFor="image-prompt" className="text-foreground mb-2 block">
+                Enter Image Prompt
+              </Label>
+              <Textarea
+                id="image-prompt"
+                value={imagePrompt}
+                onChange={(e) => setImagePrompt(e.target.value)}
+                placeholder="Describe the image you want to generate..."
+                className="min-h-20 bg-input border-border text-foreground"
+              />
+            </div>
+          )}
 
           <div>
             <Label htmlFor="pin" className="text-foreground mb-2 block">
@@ -208,13 +291,15 @@ export const StegoEncoder = () => {
             </p>
           </div>
 
-          {generatedImage && !encodedImageUrl && (
+          {sourceImage && !encodedImageUrl && (
             <div className="space-y-2">
-              <span className="text-sm font-medium text-muted-foreground">Generated Image</span>
+              <span className="text-sm font-medium text-muted-foreground">
+                {imageSource === 'upload' ? 'Uploaded Image' : 'Generated Image'}
+              </span>
               <div className="relative rounded-lg overflow-hidden border-2 border-border">
                 <img
-                  src={generatedImage}
-                  alt="Generated"
+                  src={sourceImage}
+                  alt="Source"
                   className="w-full h-auto max-h-96 object-contain bg-muted"
                 />
               </div>
@@ -279,7 +364,7 @@ export const StegoEncoder = () => {
           )}
 
           <div className="flex gap-3">
-            {!generatedImage ? (
+            {imageSource === 'generate' && !generatedImage ? (
               <Button
                 onClick={handleGenerateImage}
                 disabled={generating || !imagePrompt}
@@ -288,7 +373,7 @@ export const StegoEncoder = () => {
                 <Sparkles className="w-4 h-4 mr-2" />
                 {generating ? 'Generating...' : 'Generate Image'}
               </Button>
-            ) : !encodedImageUrl ? (
+            ) : !encodedImageUrl && sourceImage ? (
               <Button
                 onClick={handleEncode}
                 disabled={processing || !message || !validatePin(pin)}
@@ -296,10 +381,11 @@ export const StegoEncoder = () => {
               >
                 {processing ? 'Encoding...' : 'ENCODE'}
               </Button>
-            ) : (
+            ) : encodedImageUrl ? (
               <Button
                 onClick={() => {
                   setGeneratedImage('');
+                  setUploadedImage('');
                   setEncodedImageUrl('');
                   setQrCodeUrl('');
                   setMessage('');
@@ -311,7 +397,7 @@ export const StegoEncoder = () => {
               >
                 Encode New Message
               </Button>
-            )}
+            ) : null}
           </div>
         </CardContent>
       </Card>
