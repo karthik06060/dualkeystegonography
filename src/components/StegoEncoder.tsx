@@ -73,9 +73,14 @@ export const StegoEncoder = () => {
       } else {
         throw new Error('No image URL returned');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Image generation error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to generate image');
+      const msg = error?.message || String(error);
+      if (msg.includes('cannot fulfill') || msg.includes('inappropriate') || msg.includes('sexually')) {
+        toast.error('Your prompt was rejected by the AI content policy. Please try a different, appropriate prompt.');
+      } else {
+        toast.error(msg || 'Failed to generate image');
+      }
     } finally {
       setGenerating(false);
     }
