@@ -271,7 +271,11 @@ export const StegoEncoder = () => {
                 onChange={(e) => setImagePrompt(e.target.value)}
                 placeholder="Describe the image you want to generate..."
                 className="min-h-20 bg-input border-border text-foreground"
+                maxLength={1000}
               />
+              <p className={`text-xs mt-1 ${imagePrompt.length >= 1000 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {imagePrompt.length}/1000 characters
+              </p>
             </div>
           )}
 
