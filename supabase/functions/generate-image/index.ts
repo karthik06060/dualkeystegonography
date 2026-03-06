@@ -75,9 +75,17 @@ serve(async (req) => {
     const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     
     if (!imageUrl) {
-      console.error('No image URL in response:', data);
+      const textContent = data.choices?.[0]?.message?.content;
+      if (textContent) {
+        console.log('Model returned text instead of image:', textContent);
+        return new Response(
+          JSON.stringify({ error: textContent }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.error('No image URL in response:', JSON.stringify(data));
       return new Response(
-        JSON.stringify({ error: 'No image generated' }),
+        JSON.stringify({ error: 'No image generated. Try a different prompt.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
