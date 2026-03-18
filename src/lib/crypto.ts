@@ -6,10 +6,18 @@ const IV_LENGTH = 12;
 const TAG_LENGTH = 128;
 
 function getSubtle(): SubtleCrypto {
-  if (!crypto?.subtle) {
-    throw new Error('Web Crypto API is not available. Ensure you are using HTTPS.');
+  // crypto.subtle is available in secure contexts (HTTPS) and localhost on most browsers
+  if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.subtle) {
+    return globalThis.crypto.subtle;
   }
-  return crypto.subtle;
+  // Fallback: try window.crypto
+  if (typeof window !== 'undefined' && window.crypto?.subtle) {
+    return window.crypto.subtle;
+  }
+  throw new Error(
+    'Web Crypto API is not available. If running locally, try using "vite --host" with HTTPS, ' +
+    'or use a browser that supports crypto.subtle on localhost (Chrome, Edge, Firefox).'
+  );
 }
 
 // Derive a 256-bit key from PIN using PBKDF2
