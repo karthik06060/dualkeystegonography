@@ -69,10 +69,22 @@ const Index = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
+          {!isCryptoAvailable && (
+            <Alert className="mb-6 bg-destructive/10 border-destructive">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <AlertDescription className="text-foreground">
+                <strong>Secure context required:</strong> This app needs HTTPS or localhost to work.
+                You're currently on an insecure connection, so encryption features are unavailable.
+                Please access this page via <code className="bg-muted px-1 rounded">https://</code> or <code className="bg-muted px-1 rounded">http://localhost</code>.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-2 bg-card border border-border">
               <TabsTrigger
                 value="encode"
+                disabled={!isCryptoAvailable}
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-lg py-3"
               >
                 <Lock className="w-5 h-5 mr-2" />
@@ -80,6 +92,7 @@ const Index = () => {
               </TabsTrigger>
               <TabsTrigger
                 value="decode"
+                disabled={!isCryptoAvailable}
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-lg py-3"
               >
                 <Unlock className="w-5 h-5 mr-2" />
