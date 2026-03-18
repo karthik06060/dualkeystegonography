@@ -24,7 +24,7 @@ async function deriveKeyFromPin(pin: string, salt: Uint8Array): Promise<CryptoKe
     ['deriveKey']
   );
 
-  return crypto.subtle.deriveKey(
+  return subtle.deriveKey(
     {
       name: 'PBKDF2',
       salt: salt.buffer as ArrayBuffer,
@@ -52,10 +52,11 @@ export function generatePRNGSeed(): string {
 
 // Encrypt message with AES-256-GCM
 export async function encryptAES(message: string, keyBase64: string): Promise<string> {
+  const subtle = getSubtle();
   const encoder = new TextEncoder();
   const keyBytes = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
   
-  const cryptoKey = await crypto.subtle.importKey(
+  const cryptoKey = await subtle.importKey(
     'raw',
     keyBytes.buffer as ArrayBuffer,
     { name: ALGORITHM },
@@ -64,7 +65,7 @@ export async function encryptAES(message: string, keyBase64: string): Promise<st
   );
 
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-  const ciphertext = await crypto.subtle.encrypt(
+  const ciphertext = await subtle.encrypt(
     { name: ALGORITHM, iv: iv.buffer as ArrayBuffer, tagLength: TAG_LENGTH },
     cryptoKey,
     encoder.encode(message)
@@ -80,11 +81,12 @@ export async function encryptAES(message: string, keyBase64: string): Promise<st
 
 // Decrypt message with AES-256-GCM
 export async function decryptAES(encryptedBase64: string, keyBase64: string): Promise<string> {
+  const subtle = getSubtle();
   const decoder = new TextDecoder();
   const keyBytes = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
   const encryptedBytes = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
 
-  const cryptoKey = await crypto.subtle.importKey(
+  const cryptoKey = await subtle.importKey(
     'raw',
     keyBytes.buffer as ArrayBuffer,
     { name: ALGORITHM },
@@ -95,7 +97,7 @@ export async function decryptAES(encryptedBase64: string, keyBase64: string): Pr
   const iv = encryptedBytes.slice(0, IV_LENGTH);
   const ciphertext = encryptedBytes.slice(IV_LENGTH);
 
-  const plaintext = await crypto.subtle.decrypt(
+  const plaintext = await subtle.decrypt(
     { name: ALGORITHM, iv: iv.buffer as ArrayBuffer, tagLength: TAG_LENGTH },
     cryptoKey,
     ciphertext.buffer as ArrayBuffer
@@ -110,6 +112,7 @@ export async function encryptKeyBundleWithPin(
   key2: string,
   pin: string
 ): Promise<string> {
+  const subtle = getSubtle();
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const derivedKey = await deriveKeyFromPin(pin, salt);
 
@@ -117,7 +120,7 @@ export async function encryptKeyBundleWithPin(
   const bundle = JSON.stringify({ key1, key2 });
   
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-  const ciphertext = await crypto.subtle.encrypt(
+  const ciphertext = await subtle.encrypt(
     { name: ALGORITHM, iv: iv.buffer as ArrayBuffer, tagLength: TAG_LENGTH },
     derivedKey,
     encoder.encode(bundle)
@@ -137,6 +140,7 @@ export async function decryptKeyBundleWithPin(
   encryptedBundle: string,
   pin: string
 ): Promise<{ key1: string; key2: string }> {
+  const subtle = getSubtle();
   const encryptedBytes = Uint8Array.from(atob(encryptedBundle), c => c.charCodeAt(0));
 
   const salt = encryptedBytes.slice(0, 16);
@@ -145,7 +149,7 @@ export async function decryptKeyBundleWithPin(
 
   const derivedKey = await deriveKeyFromPin(pin, salt);
 
-  const plaintext = await crypto.subtle.decrypt(
+  const plaintext = await subtle.decrypt(
     { name: ALGORITHM, iv: iv.buffer as ArrayBuffer, tagLength: TAG_LENGTH },
     derivedKey,
     ciphertext.buffer as ArrayBuffer
