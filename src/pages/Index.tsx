@@ -1,8 +1,20 @@
 import { useState } from 'react';
-import { Shield, Lock, Unlock } from 'lucide-react';
+import { Shield, Lock, Unlock, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StegoEncoder } from '@/components/StegoEncoder';
 import { StegoDecoder } from '@/components/StegoDecoder';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
+const isCryptoAvailable = (() => {
+  try {
+    return !!(
+      (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.subtle) ||
+      (typeof window !== 'undefined' && window.crypto?.subtle)
+    );
+  } catch {
+    return false;
+  }
+})();
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('encode');
