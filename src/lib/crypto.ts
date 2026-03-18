@@ -5,10 +5,18 @@ const KEY_LENGTH = 256;
 const IV_LENGTH = 12;
 const TAG_LENGTH = 128;
 
+function getSubtle(): SubtleCrypto {
+  if (!crypto?.subtle) {
+    throw new Error('Web Crypto API is not available. Ensure you are using HTTPS.');
+  }
+  return crypto.subtle;
+}
+
 // Derive a 256-bit key from PIN using PBKDF2
 async function deriveKeyFromPin(pin: string, salt: Uint8Array): Promise<CryptoKey> {
+  const subtle = getSubtle();
   const encoder = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
+  const keyMaterial = await subtle.importKey(
     'raw',
     encoder.encode(pin),
     'PBKDF2',
