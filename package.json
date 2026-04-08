@@ -1,7 +1,9 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "dual-key-steganography",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Dual-Key Steganography application with AES-256-GCM encryption and latent-space image encoding",
+  "author": "Dual-Key Stego Team",
   "type": "module",
   "scripts": {
     "dev": "vite",
